@@ -177,7 +177,8 @@ POLICY
     website {
         index_document = "index.html"
         error_document = "error.html"
-        routing_rules = [
+        routing_rules = <<RULES
+[
   {
     "condition": {
       "http_error_code_returned_equals": "404",
@@ -192,6 +193,7 @@ POLICY
     }
   }
 ]
+RULES
     }
 }
 resource "aws_s3_bucket" "fuga" {
@@ -226,7 +228,8 @@ resource "aws_s3_bucket" "fuga" {
     website {
         index_document = "index.html"
         error_document = "error.html"
-        routing_rules = [
+        routing_rules = <<RULES
+[
   {
     "condition": {
       "http_error_code_returned_equals": "404",
@@ -241,6 +244,7 @@ resource "aws_s3_bucket" "fuga" {
     }
   }
 ]
+RULES
     }
 }
         EOS

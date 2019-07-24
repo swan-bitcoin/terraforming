@@ -107,7 +107,9 @@ POLICY
         error_document = "<%= bucket.website.error_document.key %>"
       <%- end -%>
       <%- unless bucket.website.routing_rules.nil? %>
-        routing_rules = <%= prettify_website_routing_rules(bucket) %>
+        routing_rules = <<RULES
+<%= prettify_website_routing_rules(bucket) %>
+RULES
       <%- end -%>
     }
   <%- end -%>
