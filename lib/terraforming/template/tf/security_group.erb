@@ -1,3 +1,4 @@
+<% require 'pp' %>
 <% security_groups.each do |security_group| -%>
 resource "aws_security_group" "<%= module_name_of(security_group) %>" {
     name        = "<%= security_group.group_name %>"
@@ -5,23 +6,16 @@ resource "aws_security_group" "<%= module_name_of(security_group) %>" {
     vpc_id      = "<%= security_group.vpc_id || '' %>"
 
 <% dedup_permissions(security_group.ip_permissions, security_group.group_id).each do |permission| -%>
+    <%# <% puts permission.pretty_inspect %>
   <%- security_groups = security_groups_in(permission, security_group).reject { |group_name| group_name == security_group.group_name }.reject { |group_id| group_id == security_group.group_id } -%>
-<% permission.ip_ranges.group_by { |range| range.description }.each do |description, ip_ranges| -%>
+<% permission.ip_ranges.concat(permission.ipv_6_ranges).group_by { |range| range.description }.each do |description, ranges| -%>
     ingress {
         description     = "<%= description %>"
         from_port       = <%= permission.from_port || 0 %>
         to_port         = <%= permission.to_port || 0 %>
         protocol        = "<%= permission.ip_protocol %>"
-        cidr_blocks     = <%= ip_ranges.map { |range| range.cidr_ip }.inspect %>
-    }
-<% end -%>
-<% permission.ipv_6_ranges.group_by { |range| range.description }.each do |description, ipv_6_ranges| -%>
-    ingress {
-        description     = "<%= description %>"
-        from_port       = <%= permission.from_port || 0 %>
-        to_port         = <%= permission.to_port || 0 %>
-        protocol        = "<%= permission.ip_protocol %>"
-        ipv6_cidr_blocks     = <%= ipv_6_ranges.map { |range| range.cidr_ipv_6 }.inspect %>
+        cidr_blocks     = <%= ranges.select {|range| range.respond_to?(:cidr_ip) }.map { |range| range.cidr_ip }.inspect %>
+        ipv6_cidr_blocks = <%= ranges.select {|range| range.respond_to?(:cidr_ipv_6) }.map { |range| range && range.cidr_ipv_6 }.inspect %>
     }
 <% end -%>
 <% permission.prefix_list_ids.group_by { |range| range.description }.each do |description, prefix_list_ids | -%>
@@ -30,18 +24,25 @@ resource "aws_security_group" "<%= module_name_of(security_group) %>" {
         from_port       = <%= permission.from_port || 0 %>
         to_port         = <%= permission.to_port || 0 %>
         protocol        = "<%= permission.ip_protocol %>"
-        prefix_list_ids = <%= prefix_list_ids.map { |range| range.prefix_list_id }.inspect %>
+        prefix_list_ids = <%= prefix_list_ids.map { |list| list.prefix_list_id }.inspect %>
     }
 <% end -%>
-<%- if permission.user_id_group_pairs.length > 0 -%>
+<% permission.user_id_group_pairs.group_by { |pair| pair.description }.each do |description, pair| -%>
+    ingress {
+        description     = "<%= description %>"
+        from_port       = <%= permission.from_port || 0 %>
+        to_port         = <%= permission.to_port || 0 %>
+        protocol        = "<%= permission.ip_protocol %>"
+        security_groups = <%= pair.map(&:group_id).inspect %>
+    }
+<% end -%>
+<%- if self_referenced_permission?(security_group, permission) -%>
     ingress {
         description     = "<%= description_of(permission).to_s %>"
         from_port       = <%= permission.from_port || 0 %>
         to_port         = <%= permission.to_port || 0 %>
         protocol        = "<%= permission.ip_protocol %>"
-  <%- self_referenced = self_referenced_permission?(security_group, permission) -%>
-        security_groups = <%= security_groups.inspect %>
-        self            = <%= self_referenced %>
+        self            = true
     }
 <%- end -%>
 <%- end -%>
