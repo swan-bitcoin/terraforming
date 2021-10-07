@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
 
-require "terraforming"
+require_relative "../lib/terraforming"
 
 Terraforming::CLI.start(ARGV)

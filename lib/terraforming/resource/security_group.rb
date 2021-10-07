@@ -21,6 +21,7 @@ module Terraforming
 
       def tfstate
         security_groups.inject({}) do |resources, security_group|
+          
           attributes = {
             "description" => security_group.description,
             "id" => security_group.group_id,
